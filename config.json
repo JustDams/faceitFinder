@@ -147,6 +147,25 @@
         "color": "#6B9B46"
       }
     },
+    "charts": {
+      "text": "#c9d1d9",
+      "grid": "#3c3c3c",
+      "background": "#2f3136",
+      "radarCategories": {
+        "Matches": {
+          "border": "rgb(76, 191, 192)",
+          "background": "rgba(76, 191, 192, 0.2)"
+        },
+        "Win Rate %": {
+          "border": "rgb(54, 162, 235)",
+          "background": "rgba(54, 162, 235, 0.2)"
+        },
+        "Elo Gain": {
+          "border": "rgb(153, 102, 255)",
+          "background": "rgba(153, 102, 255, 0.2)"
+        }
+      }
+    },
     "error": "#770000"
   },
   "emojis": {

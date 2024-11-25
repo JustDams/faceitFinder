@@ -26,17 +26,16 @@ const getChart = (datasets, labels, datasetFunc, displayY1, game) => {
   const canvas = Canvas.createCanvas(600, 400)
   const ctx = canvas.getContext('2d')
 
-  const color = '#c9d1d9', gridColor = '#3c3c3c'
   const yAxisBase = {
     border: {
       width: 1,
     },
     grid: {
-      color: gridColor,
+      color: color.charts.grid,
     },
     ticks: {
       beginAtZero: false,
-      color: color,
+      color: color.charts.text,
     }
   }
 
@@ -60,17 +59,17 @@ const getChart = (datasets, labels, datasetFunc, displayY1, game) => {
         },
         x: {
           grid: {
-            color: gridColor,
+            color: color.charts.grid,
           },
           ticks: {
-            color: color,
+            color: color.charts.text,
           }
         }
       },
       plugins: {
         legend: {
           labels: {
-            color: color,
+            color: color.charts.text,
             borderWidth: 1,
           }
         }
@@ -81,7 +80,7 @@ const getChart = (datasets, labels, datasetFunc, displayY1, game) => {
         const ctx = chart.canvas.getContext('2d')
         ctx.save()
         ctx.globalCompositeOperation = 'source-over'
-        ctx.fillStyle = '#2f3136'
+        ctx.fillStyle = color.charts.background
         ctx.fillRect(0, 0, chart.width, chart.height)
         ctx.restore()
       }
@@ -223,6 +222,61 @@ const getGraph = (locale, playerName, type, matchHistory, maxMatch) => {
   }
 }
 
+const getMapRadarChart = (segments, types) => {
+  const canvas = Canvas.createCanvas(600, 600)
+  const ctx = canvas.getContext('2d')
+  const datasetsKeys = types.map(e => e.name)
+  const datasets = datasetsKeys.map(key => {
+    return {
+      label: key,
+      data: segments.map(e => e.stats[key]),
+      backgroundColor: color.charts.radarCategories[key].background,
+      borderColor: color.charts.radarCategories[key].border,
+      borderWidth: 2
+    }
+  })
+
+  new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: segments.map(e => e.label),
+      datasets: datasets
+    },
+    options: {
+      scales: {
+        r: {
+          grid: {
+            color: color.charts.grid,
+          },
+          ticks: {
+            color: color.charts.text,
+            backdropColor: color.charts.background,
+          },
+          backgroundColor: color.charts.background,
+          pointLabels: {
+            display: true,
+            font: {
+              size: 16
+            },
+            color: color.charts.text,
+            padding: 10
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: color.charts.text,
+            borderWidth: 2,
+          }
+        }
+      }
+    }
+  })
+
+  return canvas.toBuffer()
+}
+
 module.exports = {
   generateChart,
   getRankImage,
@@ -231,5 +285,6 @@ module.exports = {
   getChart,
   getGraph,
   getCompareDatasets,
-  getEloGain
+  getEloGain,
+  getMapRadarChart
 }

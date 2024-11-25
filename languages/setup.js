@@ -20,6 +20,7 @@ const getTranslation = (key, language, replace) => {
   try {
     languageConf = require(`./${language}/translations`)
     string = languageConf[key]
+    if (!string.length) throw new Error('Empty string')
   } catch (error) {
     languageConf = require('./en-US/translations')
     string = languageConf[key]

@@ -120,6 +120,9 @@ base.strings.pagination = {
 }
 base.strings.donate = 'Support the project'
 base.strings.fullHistory = 'Full history'
+base.strings.allMaps = 'All maps'
+// Radar chart 
+base.strings.allMapsDescription = 'Sneak peek of different maps statistics'
 base.strings.premiumDesc = 'This feature is only available for premium guilds. Become a premium guild by clicking on the button below'
 base.error.user.missing = 'It seems like there is a user missing'
 base.error.user.compareSame = 'You can\'t compare the same user'

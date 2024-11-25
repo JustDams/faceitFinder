@@ -10,9 +10,85 @@ const { getTranslations, getTranslation } = require('../languages/setup')
 const { getStats } = require('../functions/apiHandler')
 const errorCard = require('../templates/errorCard')
 const { getInteractionOption, getGameOption } = require('../functions/utility')
+const { generateButtons } = require('../functions/customType')
+const { TYPES } = require('../templates/customType')
+
+const ALL = 'all'
+
+const buildDefaultMapEmbed = async (interaction, playerId, game, mode, types = null) => {
+  types ??= [
+    TYPES.MATCHES,
+    TYPES.WINRATE,
+    {
+      ...TYPES.ELO_GAIN,
+      style: Discord.ButtonStyle.Secondary
+    }
+  ]
+
+  const matchNumber = types.find(t => t.name === TYPES.ELO_GAIN.name)?.style === Discord.ButtonStyle.Secondary ? 20 : 0
+  const {
+    playerDatas,
+    playerStats,
+    playerHistory
+  } = await getStats({
+    playerParam: {
+      param: playerId,
+      faceitId: true,
+    },
+    matchNumber,
+    checkElo: true,
+    game
+  })
+
+  const faceitLevel = playerDatas.games[game].skill_level
+  const faceitElo = playerDatas.games[game].faceit_elo
+  const size = 40
+  const filesAtt = []
+  const values = {
+    id: 'mapRadarChartSelector',
+    playerId,
+    userId: interaction.user.id,
+    game,
+    mode,
+    map: ALL,
+    types
+  }
+
+  const buttons = await Promise.all(types.map(t => generateButtons(interaction, values, t)))
+
+  const rankImageCanvas = await Graph.getRankImage(faceitLevel, faceitElo, size, game)
+  playerStats.segments.forEach(s => {
+    const eloGain = playerHistory
+      .filter(h => (h.i1 === maps[s.label] || h.i1 === s.label) && s.mode === mode && h.gameMode === s.mode)
+      .map(h => h.eloGain).filter(h => h).reduce((acc, h) => acc + h, 0)
+
+    s.stats['Elo Gain'] = eloGain
+  })
+  playerStats.segments.sort((a, b) => a.label.localeCompare(b.label))
+  const radarChartCanvas = Graph.getMapRadarChart(playerStats.segments, types.filter(t => t.style !== Discord.ButtonStyle.Secondary))
+  filesAtt.push(new Discord.AttachmentBuilder(radarChartCanvas, { name: 'radar.png' }))
+  filesAtt.push(new Discord.AttachmentBuilder(rankImageCanvas, { name: 'level.png' }))
+
+  const embed = new Discord.EmbedBuilder()
+    .setAuthor({ name: playerDatas.nickname, iconURL: playerDatas.avatar || null, url: `https://www.faceit.com/en/players/${playerDatas.nickname}` })
+    .setDescription(`[Steam](https://steamcommunity.com/profiles/${playerDatas.games[game].game_player_id}), [Faceit](https://www.faceit.com/en/players/${playerDatas.nickname})`)
+    .setColor(color.levels[game][faceitLevel].color)
+    .setThumbnail('attachment://level.png')
+    .setImage('attachment://radar.png')
+
+  const actionRow = new Discord.ActionRowBuilder()
+    .addComponents(buttons)
+
+  return {
+    embeds: [embed],
+    components: [actionRow],
+    files: filesAtt
+  }
+}
 
 const buildEmbed = async (interaction, playerId, map, mode, game) => {
   if (!map) return
+  if (map === ALL) return buildDefaultMapEmbed(interaction, playerId, game, mode)
 
   const {
     playerDatas,
@@ -89,7 +165,7 @@ const buildEmbed = async (interaction, playerId, map, mode, game) => {
   }
 }
 
-const sendCardWithInfo = async (interaction, playerParam, map = null, mode = null, game = null) => {
+const sendCardWithInfo = async (interaction, playerParam, map = ALL, mode = null, game = null) => {
   map ??= getInteractionOption(interaction, 'map')
   game ??= getGameOption(interaction)
   mode ??= '5v5'
@@ -108,17 +184,33 @@ const sendCardWithInfo = async (interaction, playerParam, map = null, mode = nul
   if (!playerStats.segments.length) throw getTranslation('error.user.noMatches', interaction.locale, { playerName: playerDatas.nickname })
 
   const playerId = playerDatas.player_id
+  const defaultValues = {
+    playerId,
+    userId: interaction.user.id,
+    game,
+  }
+
   let content = getTranslation('strings.selectMapDescription', interaction.locale, { playerName: playerDatas.nickname })
   let options = []
-  const totalMatches = playerStats.segments.reduce((acc, e) => acc + parseInt(e.stats.Matches), 0)
 
+  const defaultId = (await Interaction.create({
+    ...defaultValues,
+    map: ALL,
+    mode: '5v5'
+  })).id
+  const defaultOption = new Discord.StringSelectMenuOptionBuilder()
+    .setLabel(getTranslation('strings.allMaps', interaction.locale))
+    .setDescription(getTranslation('strings.allMapsDescription', interaction.locale))
+    .setValue(defaultId)
+    .setDefault(true)
+  options.push(defaultOption)
+
+  const totalMatches = playerStats.segments.reduce((acc, e) => acc + parseInt(e.stats.Matches), 0)
   await Promise.all(playerStats.segments.map(async (e) => {
     e.label = game === 'cs2' ? maps[e.label] : e.label
     const label = `${e.label} ${e.mode}`
     const values = {
-      playerId,
-      userId: interaction.user.id,
-      game,
+      ...defaultValues,
       map: e.label,
       mode: e.mode
     }
@@ -158,6 +250,7 @@ const sendCardWithInfo = async (interaction, playerParam, map = null, mode = nul
     const resp = await buildEmbed(interaction, playerId, map, mode, game)
     embeds = resp.embeds
     files = resp.files
+    if (resp.components) components.push(...resp.components)
     content = ''
   }
 

@@ -160,6 +160,8 @@ module.exports = {
     verifyDescription: '',
     verify: '',
     premiumDesc: '',
+    allMaps: '',
+    allMapsDescription: '',
   },
   error: {
     user: {
